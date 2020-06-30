@@ -1,9 +1,7 @@
 import serial
 import os 
 import datetime
-#import calendar
-from time import time
-#import re 
+from time import time 
 
 
 # Receiver details  
@@ -13,8 +11,7 @@ baud = 38400
 
 def parseGPS(data):
 
-
-## NMEA GGA String 
+# NMEA GGA String 
 # Message ID, UTC of Possition Fix, Latitude, Direction of lattitude, Longitude, Direction of Longitude, GPS Quality Indicator, Number of SV's, HDOP, Orthometric height, Meters, Geoid Seperation, Meters, Age of differential GPS data
  
 
@@ -30,7 +27,7 @@ def parseGPS(data):
         sentenceId = "$GNGGA"
    
         # GPS Time in NMEA sentence  
-        time = sdata[1][0:2] + ":" + sdata[1][2:4] + ":" + sdata[1][4:6]
+        gps_time = sdata[1][0:2] + ":" + sdata[1][2:4] + ":" + sdata[1][4:6]
 
         # System  Time
         OS_time = datetime.datetime.now()       
@@ -55,11 +52,11 @@ def parseGPS(data):
         orthHeight = sdata[8]
               
         # Populate output list
-        list = [OS_time, epoch_time, sentenceId, time, lat, directionLatitude, lon, directionLongitude, gpsQualityIndicator, numOfSVs, hdop]
+        list = [OS_time, epoch_time, sentenceId, gps_time, lat, directionLatitude, lon, directionLongitude, gpsQualityIndicator, numOfSVs, hdop]
         
-         # Debug outputs to dump to command window
-#        print "Arrival time : %s , Epochtime : %s , GPS time : %s, latitude : %s(%s), longitude : %s(%s)"  %  (OS_time, epoch_time, time, lat, directionLatitude, lon, directionLongitude)
-#        print "GPS Qual : %s, numberSats: (%s), HDOP: %s" %  (gpsQualityIndicator, numOfSVs, hdop)
+        # Debug outputs to dump to command window
+        #print "Arrival time : %s , Epochtime : %s , GPS time : %s, latitude : %s(%s), longitude : %s(%s)"  %  (OS_time, epoch_time, gps_time, lat, directionLatitude, lon, directionLongitude)
+        #print "GPS Qual : %s, numberSats: (%s), HDOP: %s" %  (gpsQualityIndicator, numOfSVs, hdop)
 	
         return list
  
@@ -76,11 +73,13 @@ def decode(coord):
 
 
 
-
- 
  
 print "Receiving GPS data"
+
+# Open the serial port 
 ser = serial.Serial(port, baudrate = baud, timeout = 0.5)
+
+
 # Open a logger text file for NMEA data 
 outputFile = open('nmeaLogger.csv', 'w')
 
@@ -99,28 +98,31 @@ while True:
    # Check if return value is a list of values
    boolean_val = isinstance(nmeaList, list)
 
-   
    if boolean_val == True:
       
-      # Message counter 
+      # NMEA String counter 
       outputFile.write(str(measurement_count) + ', ')
+      # NMEA GGA Counter 
       outputFile.write(str(gga_count) + ', ')
 
       # Debug output 
       # print nmeaList
   
       for x in range(len(nmeaList)):
+
           # Convert nmea list element to a string value 
           nmeaElement = str(nmeaList[x])
-          
+
+          # Write the nmea output to file
           outputFile.write(nmeaElement + ',  ')
+      
+     # Create a new line 
       outputFile.write("\n")
 
       gga_count = gga_count + 1
 
    measurement_count = measurement_count +  1
 
-outtputFile.close()
+outputFile.close()
 
 
-   
