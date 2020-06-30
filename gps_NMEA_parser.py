@@ -1,34 +1,23 @@
 import serial
- 
+import os 
+import datetime
+#import calendar
+from time import time
+#import re 
+
+
+# Receiver details  
 port = "/dev/ttyUSB0"
- 
-## NMEA GNRMC String
+baud = 38400
+
 
 def parseGPS(data):
-#    print "raw:", data #prints raw data
-    if data[0:6] == "$GNRMC":
-        sdata = data.split(",")
-        if(sdata[2] == 'V'):
-            print "No RMC data available\n"
-            return
-        print "-------------------\n",
-        print "---PARSING GNRMC---\n",
-        print "-------------------\n",
-        time = sdata[1][0:2] + ":" + sdata[1][2:4] + ":" + sdata[1][4:6]
-        lat = decode(sdata[3]) #latitude
-        dirLat = sdata[4]      #latitude direction N/S
-        lon = decode(sdata[5]) #longitute
-        dirLon = sdata[6]      #longitude direction E/W
-        speed = sdata[7]       #Speed in knots
-        trCourse = sdata[8]    #True course
-        date = sdata[9][0:2] + "/" + sdata[9][2:4] + "/" + sdata[9][4:6]#date
-        print "GPS time : %s, latitude : %s(%s), longitude : %s(%s), speed : %s, True Course : %s, Date : %s \n" %  (time,lat,dirLat,lon,dirLon,speed,trCourse,date)
+
 
 ## NMEA GGA String 
-
 # Message ID, UTC of Possition Fix, Latitude, Direction of lattitude, Longitude, Direction of Longitude, GPS Quality Indicator, Number of SV's, HDOP, Orthometric height, Meters, Geoid Seperation, Meters, Age of differential GPS data
-    time = 0 
-    time_old = 0
+ 
+
     if(data[0:6] == "$GNGGA"):
         sdata = data.split(",")
         if sdata[2] == 'V':
@@ -38,27 +27,41 @@ def parseGPS(data):
         print "---PARSING GNGGA---\n",
         print "-------------------\n",
 
-        time_diff = time-time_old
+        sentenceId = "$GNGGA"
+   
+        # GPS Time in NMEA sentence  
         time = sdata[1][0:2] + ":" + sdata[1][2:4] + ":" + sdata[1][4:6]
-        time_old = time
+
+        # System  Time
+        OS_time = datetime.datetime.now()       
+
+       # epoch_time = int((datetime.datetime.now() - datetime.datetime(1970,1,1)).total_seconds())
+        epoch_time = int(datetime.datetime.now().strftime("%s")) * 1000
+        
         lat = decode(sdata[2]) #latitude
+
         directionLatitude = sdata[3]     #latitude direction N/S
+
         lon = decode(sdata[4]) #longitute
+
         directionLongitude = sdata[5]     #longitude direction E/W
+
         gpsQualityIndicator = sdata[6]       #Speed in knots
+
         numOfSVs = sdata[7]    #True course
-        hdop = sdata[8]
+
+        hdop = sdata[8]    # Quality of GPS < 1 = good GPS signal
+
         orthHeight = sdata[8]
-        unitMeasureOrthHeight = 0
-        geoidSeperation = 0
-        ageOfGPSData = 0
+              
+        # Populate output list
+        list = [OS_time, epoch_time, sentenceId, time, lat, directionLatitude, lon, directionLongitude, gpsQualityIndicator, numOfSVs, hdop]
         
-        time_df = 0
-        msgFreq = 0
-        
-        print "GPS time : %s, latitude : %s(%s), longitude : %s(%s), time_diff : %s, msg_freq : %s" %  (time,lat, directionLatitude, lon, directionLongitude, time_diff, msgFreq)
-        print "GPS Qual : %s, numberSats: (%s), HDOP: %s, Orthemetric Height : %s(%s), Age of data : %s" %  (gpsQualityIndicator, numOfSVs, hdop, orthHeight, unitMeasureOrthHeight, ageOfGPSData)
-        print(time_old)
+         # Debug outputs to dump to command window
+#        print "Arrival time : %s , Epochtime : %s , GPS time : %s, latitude : %s(%s), longitude : %s(%s)"  %  (OS_time, epoch_time, time, lat, directionLatitude, lon, directionLongitude)
+#        print "GPS Qual : %s, numberSats: (%s), HDOP: %s" %  (gpsQualityIndicator, numOfSVs, hdop)
+	
+        return list
  
 def decode(coord):
     #Converts DDDMM.MMMMM > DD deg MM.MMMMM min
@@ -68,11 +71,56 @@ def decode(coord):
     deg = head[0:-2]
     min = head[-2:]
     return deg + " deg " + min + "." + tail + " min"
+
+
+
+
+
+
  
  
 print "Receiving GPS data"
-ser = serial.Serial(port, baudrate = 38400, timeout = 0.5)
+ser = serial.Serial(port, baudrate = baud, timeout = 0.5)
+# Open a logger text file for NMEA data 
+outputFile = open('nmeaLogger.csv', 'w')
+
+# Start the measurement counter 
+measurement_count = 0
+gga_count = 0
+
 while True:
+   
+   # Read serial data  
    data = ser.readline()
-   parseGPS(data)
+   
+   # Create NMEA list 
+   nmeaList = parseGPS(data)
+     
+   # Check if return value is a list of values
+   boolean_val = isinstance(nmeaList, list)
+
+   
+   if boolean_val == True:
+      
+      # Message counter 
+      outputFile.write(str(measurement_count) + ', ')
+      outputFile.write(str(gga_count) + ', ')
+
+      # Debug output 
+      # print nmeaList
+  
+      for x in range(len(nmeaList)):
+          # Convert nmea list element to a string value 
+          nmeaElement = str(nmeaList[x])
+          
+          outputFile.write(nmeaElement + ',  ')
+      outputFile.write("\n")
+
+      gga_count = gga_count + 1
+
+   measurement_count = measurement_count +  1
+
+outtputFile.close()
+
+
    
